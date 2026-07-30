@@ -4,18 +4,32 @@ import { useWallet, truncateAddr } from "@/lib/stellar";
 import type { ReactNode } from "react";
 
 function WalletBadge() {
-  const { address, balance, connecting, funding, connect, disconnect, fundWallet } = useWallet();
+  const {
+    address,
+    balance,
+    connecting,
+    funding,
+    walletName,
+    error,
+    connect,
+    disconnect,
+    fundWallet,
+  } = useWallet();
 
   if (!address) {
     return (
-      <button
-        onClick={connect}
-        disabled={connecting}
-        className="group inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-bold text-primary-foreground shadow-[var(--shadow-soft)] transition-all hover:-translate-y-0.5 hover:shadow-[var(--shadow-lift)] active:translate-y-0 disabled:opacity-70"
-      >
-        <Wallet className="h-4 w-4" />
-        {connecting ? "Connecting…" : "Connect Wallet"}
-      </button>
+      <div className="flex flex-col items-end gap-1">
+        <button
+          onClick={connect}
+          disabled={connecting}
+          aria-busy={connecting}
+          className="group inline-flex min-h-10 items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-bold text-primary-foreground shadow-[var(--shadow-soft)] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-safe:transition-transform motion-safe:hover:-translate-y-0.5 disabled:opacity-70"
+        >
+          <Wallet className="h-4 w-4" aria-hidden="true" />
+          {connecting ? "Opening wallets…" : "Choose Wallet"}
+        </button>
+        {error && <span className="max-w-60 text-right text-xs text-destructive">{error}</span>}
+      </div>
     );
   }
   return (
@@ -35,7 +49,8 @@ function WalletBadge() {
       )}
       <div className="group relative">
         <button className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1.5 text-sm font-bold text-foreground ring-1 ring-border transition hover:-translate-y-0.5">
-          <span className="inline-block h-2 w-2 rounded-full bg-[oklch(0.72_0.18_155)]" />
+          <span className="inline-block h-2 w-2 rounded-full bg-success-foreground" />
+          {walletName ? `${walletName} · ` : ""}
           {truncateAddr(address)}
         </button>
         <div className="pointer-events-none absolute right-0 top-full z-20 mt-2 w-40 rounded-2xl bg-white p-2 opacity-0 shadow-[var(--shadow-lift)] ring-1 ring-border transition group-hover:pointer-events-auto group-hover:opacity-100">
@@ -90,8 +105,12 @@ export function AppShell({ children }: { children: ReactNode }) {
             </span>
           </Link>
           <nav className="hidden items-center gap-1 rounded-full bg-secondary/70 p-1 sm:flex">
-            <NavLink to="/" icon={<PlusCircle className="h-4 w-4" />}>Create</NavLink>
-            <NavLink to="/dashboard" icon={<LayoutGrid className="h-4 w-4" />}>Dashboard</NavLink>
+            <NavLink to="/" icon={<PlusCircle className="h-4 w-4" />}>
+              Create
+            </NavLink>
+            <NavLink to="/dashboard" icon={<LayoutGrid className="h-4 w-4" />}>
+              Dashboard
+            </NavLink>
           </nav>
           <WalletBadge />
         </div>

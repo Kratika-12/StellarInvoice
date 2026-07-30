@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { useWallet, createInvoice, type Invoice } from "@/lib/stellar";
+import { classifyWalletError, validateAmount } from "@/lib/invoice";
 
 export const Route = createFileRoute("/")({
   component: Index,
@@ -27,27 +28,43 @@ function Index() {
   const [creating, setCreating] = useState(false);
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [copied, setCopied] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
+    setFormError(null);
     if (!address) {
-      await connect();
+      try {
+        await connect();
+      } catch (error) {
+        setFormError(classifyWalletError(error));
+      }
       return;
     }
-    if (!amount || !description) return;
+    const amountError = validateAmount(amount);
+    if (amountError) {
+      setFormError(amountError);
+      document.getElementById("amount")?.focus();
+      return;
+    }
+    if (!description.trim()) {
+      setFormError("Add a short description for the payer.");
+      document.getElementById("description")?.focus();
+      return;
+    }
     setCreating(true);
     try {
       const inv = await createInvoice({ amount, description, dueDate, from: address });
       setInvoice(inv);
+    } catch (error) {
+      setFormError(classifyWalletError(error));
     } finally {
       setCreating(false);
     }
   }
 
   const shareUrl =
-    invoice && typeof window !== "undefined"
-      ? `${window.location.origin}/pay/${invoice.id}`
-      : "";
+    invoice && typeof window !== "undefined" ? `${window.location.origin}/pay/${invoice.id}` : "";
 
   function copyLink() {
     if (!shareUrl) return;
@@ -65,7 +82,7 @@ function Index() {
 
   return (
     <AppShell>
-      <div className="relative">
+      <div className="relative overflow-x-clip">
         {/* playful blobs */}
         <div className="pointer-events-none absolute -left-24 top-10 h-64 w-64 rounded-full bg-[oklch(0.9_0.09_25)] blur-3xl opacity-40" />
         <div className="pointer-events-none absolute -right-16 top-32 h-72 w-72 rounded-full bg-[oklch(0.9_0.09_210)] blur-3xl opacity-40" />
@@ -84,13 +101,19 @@ function Index() {
               ✨
             </h1>
             <p className="mt-5 max-w-md text-lg text-muted-foreground">
-              Whip up a friendly invoice, share the link, and let anyone pay you with a
-              Stellar wallet. It really is that simple. 🪄
+              Whip up a friendly invoice, share the link, and let anyone pay you with a Stellar
+              wallet. It really is that simple. 🪄
             </p>
             <div className="mt-6 flex items-center gap-3 text-sm font-semibold text-muted-foreground">
-              <span className="inline-flex items-center gap-1.5"><Check className="h-4 w-4 text-[oklch(0.6_0.15_155)]" /> No fees</span>
-              <span className="inline-flex items-center gap-1.5"><Check className="h-4 w-4 text-[oklch(0.6_0.15_155)]" /> QR + link</span>
-              <span className="inline-flex items-center gap-1.5"><Check className="h-4 w-4 text-[oklch(0.6_0.15_155)]" /> Instant</span>
+              <span className="inline-flex items-center gap-1.5">
+                <Check className="h-4 w-4 text-[oklch(0.6_0.15_155)]" /> No fees
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <Check className="h-4 w-4 text-[oklch(0.6_0.15_155)]" /> QR + link
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <Check className="h-4 w-4 text-[oklch(0.6_0.15_155)]" /> Instant
+              </span>
             </div>
           </div>
 
@@ -109,21 +132,33 @@ function Index() {
             ) : (
               <form
                 onSubmit={onSubmit}
+                aria-busy={creating}
                 className="rounded-[2rem] bg-card p-6 shadow-[var(--shadow-lift)] ring-1 ring-border sm:p-8"
               >
                 <div className="mb-5 flex items-center gap-2 text-sm font-bold text-muted-foreground">
                   <Sparkles className="h-4 w-4 text-primary" /> Create an invoice
                 </div>
 
-                <Field label="Amount (XLM)" hint="How much are you owed?">
+                {formError && (
+                  <div
+                    role="alert"
+                    className="mb-4 rounded-2xl bg-destructive/10 p-3 text-sm font-semibold text-destructive"
+                  >
+                    {formError}
+                  </div>
+                )}
+
+                <Field label="Amount (XLM)" hint="How much are you owed?" htmlFor="amount">
                   <div className="flex items-center gap-2 rounded-2xl bg-secondary/60 px-4 py-3 ring-1 ring-transparent focus-within:bg-white focus-within:ring-primary/60">
                     <span className="text-xl">🪙</span>
                     <input
+                      id="amount"
                       value={amount}
                       onChange={(e) => setAmount(e.target.value)}
-                      type="number"
-                      min="0"
-                      step="0.01"
+                      type="text"
+                      inputMode="decimal"
+                      autoComplete="off"
+                      aria-invalid={formError?.includes("amount") ? "true" : undefined}
                       required
                       placeholder="42.00"
                       className="w-full bg-transparent text-2xl font-extrabold outline-none placeholder:text-muted-foreground/60"
@@ -132,8 +167,13 @@ function Index() {
                   </div>
                 </Field>
 
-                <Field label="What's it for?" hint="A short note so payers know why">
+                <Field
+                  label="What's it for?"
+                  hint="A short note so payers know why"
+                  htmlFor="description"
+                >
                   <input
+                    id="description"
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
                     required
@@ -142,8 +182,9 @@ function Index() {
                   />
                 </Field>
 
-                <Field label="Due date (optional)">
+                <Field label="Due date (optional)" htmlFor="due-date">
                   <input
+                    id="due-date"
                     value={dueDate}
                     onChange={(e) => setDueDate(e.target.value)}
                     type="date"
@@ -154,7 +195,7 @@ function Index() {
                 <button
                   type="submit"
                   disabled={creating || connecting}
-                  className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-primary px-5 py-4 text-lg font-extrabold text-primary-foreground shadow-[var(--shadow-soft)] transition-all hover:-translate-y-0.5 hover:shadow-[var(--shadow-lift)] active:translate-y-0 disabled:opacity-70"
+                  className="mt-2 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-primary px-5 py-4 text-lg font-extrabold text-primary-foreground shadow-[var(--shadow-soft)] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-safe:transition-transform motion-safe:hover:-translate-y-0.5 disabled:opacity-70"
                 >
                   {creating ? (
                     <>
@@ -182,9 +223,21 @@ function Index() {
 
         <section className="mt-20 grid gap-4 sm:grid-cols-3">
           {[
-            { emoji: "📝", title: "Describe it", body: "Amount + a friendly note. That's the whole form." },
-            { emoji: "🔗", title: "Share the link", body: "Send by DM, email, or scan the QR — payers just tap." },
-            { emoji: "🎉", title: "Get paid", body: "Payment lands on Stellar testnet in seconds." },
+            {
+              emoji: "📝",
+              title: "Describe it",
+              body: "Amount + a friendly note. That's the whole form.",
+            },
+            {
+              emoji: "🔗",
+              title: "Share the link",
+              body: "Send by DM, email, or scan the QR — payers just tap.",
+            },
+            {
+              emoji: "🎉",
+              title: "Get paid",
+              body: "Payment lands on Stellar testnet in seconds.",
+            },
           ].map((s, i) => (
             <div
               key={i}
@@ -200,7 +253,9 @@ function Index() {
         <section className="mt-14 flex items-center justify-between rounded-3xl bg-foreground p-6 text-background sm:p-8">
           <div>
             <h3 className="text-2xl font-extrabold">See all your invoices</h3>
-            <p className="mt-1 text-sm text-background/70">Pending, paid, and everything in between.</p>
+            <p className="mt-1 text-sm text-background/70">
+              Pending, paid, and everything in between.
+            </p>
           </div>
           <Link
             to="/dashboard"
@@ -217,20 +272,24 @@ function Index() {
 function Field({
   label,
   hint,
+  htmlFor,
   children,
 }: {
   label: string;
   hint?: string;
+  htmlFor: string;
   children: React.ReactNode;
 }) {
   return (
-    <label className="mb-4 block">
+    <div className="mb-4 block">
       <span className="mb-1.5 flex items-baseline justify-between">
-        <span className="text-sm font-bold text-foreground">{label}</span>
+        <label htmlFor={htmlFor} className="text-sm font-bold text-foreground">
+          {label}
+        </label>
         {hint && <span className="text-xs text-muted-foreground">{hint}</span>}
       </span>
       {children}
-    </label>
+    </div>
   );
 }
 
@@ -283,7 +342,15 @@ function SuccessCard({
             onClick={onCopy}
             className="inline-flex items-center gap-1.5 rounded-full bg-foreground px-4 py-2 text-sm font-bold text-background transition hover:-translate-y-0.5"
           >
-            {copied ? <><Check className="h-4 w-4" /> Copied</> : <><Copy className="h-4 w-4" /> Copy</>}
+            {copied ? (
+              <>
+                <Check className="h-4 w-4" /> Copied
+              </>
+            ) : (
+              <>
+                <Copy className="h-4 w-4" /> Copy
+              </>
+            )}
           </button>
         </div>
       </div>
