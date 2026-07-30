@@ -9,6 +9,7 @@ export type InvoiceData = {
   from: string;
   status: "pending" | "paid";
   txHash?: string;
+  contractTxHash?: string;
 };
 
 async function getDbFile() {
@@ -42,10 +43,19 @@ async function writeDb(data: InvoiceData[]): Promise<void> {
 }
 
 export const serverCreateInvoice = createServerFn({ method: "POST" })
-  .validator((d: { amount: string; description: string; dueDate?: string; from: string }) => d)
+  .validator(
+    (d: {
+      id?: string;
+      amount: string;
+      description: string;
+      dueDate?: string;
+      from: string;
+      contractTxHash?: string;
+    }) => d,
+  )
   .handler(async ({ data }) => {
     const list = await readDb();
-    const id = Math.random().toString(36).slice(2, 10);
+    const id = data.id ?? Math.random().toString(36).slice(2, 10);
     const newInvoice: InvoiceData = {
       id,
       amount: data.amount,
@@ -54,6 +64,7 @@ export const serverCreateInvoice = createServerFn({ method: "POST" })
       createdAt: Date.now(),
       from: data.from,
       status: "pending",
+      contractTxHash: data.contractTxHash,
     };
     list.unshift(newInvoice);
     await writeDb(list);
@@ -81,7 +92,6 @@ export const serverMarkPaid = createServerFn({ method: "POST" })
     throw new Error("Invoice not found");
   });
 
-export const serverGetAllInvoices = createServerFn({ method: "GET" })
-  .handler(async () => {
-    return await readDb();
-  });
+export const serverGetAllInvoices = createServerFn({ method: "GET" }).handler(async () => {
+  return await readDb();
+});
