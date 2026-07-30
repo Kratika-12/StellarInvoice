@@ -1,6 +1,17 @@
 import { createContext, useContext, useState, useCallback, type ReactNode } from "react";
-import { isConnected, getPublicKey, signTransaction } from "@stellar/freighter-api";
-import { Horizon, TransactionBuilder, Networks, Asset, Operation, Transaction } from "@stellar/stellar-sdk";
+import {
+  Address,
+  Asset,
+  BASE_FEE,
+  Contract,
+  Horizon,
+  nativeToScVal,
+  Networks,
+  rpc,
+  Transaction,
+  TransactionBuilder,
+  type xdr,
+} from "@stellar/stellar-sdk";
 import {
   serverCreateInvoice,
   serverGetInvoice,
@@ -8,6 +19,7 @@ import {
   serverGetAllInvoices,
   type InvoiceData,
 } from "./server-db";
+import { classifyWalletError, xlmToStroops } from "./invoice";
 
 export type Invoice = InvoiceData;
 
@@ -16,6 +28,8 @@ type WalletState = {
   balance: number;
   connecting: boolean;
   funding: boolean;
+  walletName: string | null;
+  error: string | null;
   connect: () => Promise<void>;
   disconnect: () => void;
   fundWallet: () => Promise<void>;
@@ -24,15 +38,44 @@ type WalletState = {
 const WalletContext = createContext<WalletState | null>(null);
 
 const HORIZON_URL = "https://horizon-testnet.stellar.org";
+const RPC_URL = "https://soroban-testnet.stellar.org";
+export const CONTRACT_ID = import.meta.env.VITE_CONTRACT_ID?.trim() ?? "";
 const server = new Horizon.Server(HORIZON_URL);
+const rpcServer = new rpc.Server(RPC_URL);
+
+type WalletKit = import("@creit.tech/stellar-wallets-kit").StellarWalletsKit;
+let walletKitPromise: Promise<WalletKit> | null = null;
+
+async function getWalletKit(): Promise<WalletKit> {
+  if (!walletKitPromise) {
+    walletKitPromise = import("@creit.tech/stellar-wallets-kit").then(
+      ({ StellarWalletsKit, WalletNetwork, allowAllModules, FREIGHTER_ID }) =>
+        new StellarWalletsKit({
+          network: WalletNetwork.TESTNET,
+          selectedWalletId: FREIGHTER_ID,
+          modules: allowAllModules(),
+        }),
+    );
+  }
+  return walletKitPromise;
+}
 
 export async function fetchAccountBalance(address: string): Promise<number> {
   try {
     const account = await server.loadAccount(address);
     const native = account.balances.find((b) => b.asset_type === "native");
     return native ? parseFloat(native.balance) : 0;
-  } catch (err: any) {
-    if (err.response?.status === 404) {
+  } catch (err: unknown) {
+    const status =
+      typeof err === "object" &&
+      err !== null &&
+      "response" in err &&
+      typeof err.response === "object" &&
+      err.response !== null &&
+      "status" in err.response
+        ? err.response.status
+        : undefined;
+    if (status === 404) {
       return 0; // Account not active yet
     }
     console.error("Error loading account balance:", err);
@@ -55,17 +98,33 @@ export async function fundWithFriendbot(address: string): Promise<boolean> {
   }
 }
 
-export async function connectWallet(): Promise<{ address: string; balance: number }> {
-  const freighterConnected = await isConnected();
-  if (!freighterConnected) {
-    throw new Error("Freighter wallet is not installed or available.");
-  }
-  const address = await getPublicKey();
-  if (!address) {
-    throw new Error("Could not retrieve wallet address from Freighter.");
-  }
-  const balance = await fetchAccountBalance(address);
-  return { address, balance };
+export async function connectWallet(): Promise<{
+  address: string;
+  balance: number;
+  walletName: string;
+}> {
+  const kit = await getWalletKit();
+  return await new Promise((resolve, reject) => {
+    void kit.openModal({
+      modalTitle: "Choose a Stellar testnet wallet",
+      notAvailableText: "Not installed",
+      onClosed: (error) => error && reject(error),
+      onWalletSelected: async (wallet) => {
+        try {
+          kit.setWallet(wallet.id);
+          const { address } = await kit.getAddress();
+          if (!address) throw new Error("The selected wallet did not return an address.");
+          resolve({
+            address,
+            balance: await fetchAccountBalance(address),
+            walletName: wallet.name,
+          });
+        } catch (error) {
+          reject(error);
+        }
+      },
+    });
+  });
 }
 
 export async function createInvoice(data: {
@@ -74,12 +133,24 @@ export async function createInvoice(data: {
   dueDate?: string;
   from: string;
 }): Promise<Invoice> {
-  return await serverCreateInvoice(data);
+  assertContractConfigured();
+  const id = `INV-${Date.now().toString(36).toUpperCase()}`;
+  const contractTxHash = await submitContractCall(
+    data.from,
+    new Contract(CONTRACT_ID).call(
+      "create_invoice",
+      nativeToScVal(id),
+      new Address(data.from).toScVal(),
+      nativeToScVal(xlmToStroops(data.amount), { type: "i128" }),
+      nativeToScVal(data.description),
+    ),
+  );
+  return await serverCreateInvoice({ data: { ...data, id, contractTxHash } });
 }
 
 export async function payInvoice(id: string): Promise<{ txHash: string }> {
   // 1. Fetch invoice details from server
-  const invoice = await serverGetInvoice(id);
+  const invoice = await serverGetInvoice({ data: id });
   if (!invoice) {
     throw new Error("Invoice not found on the server");
   }
@@ -87,8 +158,9 @@ export async function payInvoice(id: string): Promise<{ txHash: string }> {
     throw new Error("Invoice has already been paid");
   }
 
-  // 2. Retrieve connected address
-  const payerAddress = await getPublicKey();
+  assertContractConfigured();
+  const kit = await getWalletKit();
+  const { address: payerAddress } = await kit.getAddress();
   if (!payerAddress) {
     throw new Error("Please connect your Freighter wallet to perform the payment");
   }
@@ -96,56 +168,75 @@ export async function payInvoice(id: string): Promise<{ txHash: string }> {
   // 3. Verify balance
   const balance = await fetchAccountBalance(payerAddress);
   if (parseFloat(invoice.amount) > balance) {
-    throw new Error(`Insufficient XLM balance. You need ${invoice.amount} XLM but only have ${balance.toFixed(2)} XLM.`);
+    throw new Error(
+      `Insufficient XLM balance. You need ${invoice.amount} XLM but only have ${balance.toFixed(2)} XLM.`,
+    );
   }
 
-  // 4. Fetch account information from horizon (to extract current sequence number)
-  const payerAccount = await server.loadAccount(payerAddress);
-
-  // 5. Build payment transaction operation
-  const tx = new TransactionBuilder(payerAccount, {
-    fee: "100", // base fee in stroops
-    networkPassphrase: Networks.TESTNET,
-  })
-    .addOperation(
-      Operation.payment({
-        destination: invoice.from,
-        asset: Asset.native(),
-        amount: invoice.amount,
-      })
-    )
-    .setTimeout(60)
-    .build();
-
-  const xdr = tx.toXDR();
-
-  // 6. Sign transaction via Freighter extension
-  const { signedTxXdr, error } = await signTransaction(xdr, {
-    network: "TESTNET",
-  });
-
-  if (error) {
-    throw new Error(error || "Freighter rejected the signature request");
-  }
-
-  if (!signedTxXdr) {
-    throw new Error("Failed to receive signed transaction from Freighter extension");
-  }
-
-  // 7. Submit signed envelope XDR to Stellar Horizon testnet
-  const submittedTx = new Transaction(signedTxXdr, Networks.TESTNET);
-  const result = await server.submitTransaction(submittedTx);
-
-  if (!result.successful) {
-    throw new Error("Stellar Horizon node rejected transaction submission");
-  }
-
-  const txHash = result.hash;
+  const nativeTokenContract = Asset.native().contractId(Networks.TESTNET);
+  const txHash = await submitContractCall(
+    payerAddress,
+    new Contract(CONTRACT_ID).call(
+      "pay_invoice",
+      nativeToScVal(id),
+      new Address(payerAddress).toScVal(),
+      new Address(nativeTokenContract).toScVal(),
+    ),
+  );
 
   // 8. Update database invoice state
-  await serverMarkPaid({ id, txHash });
+  await serverMarkPaid({ data: { id, txHash } });
 
   return { txHash };
+}
+
+function assertContractConfigured() {
+  if (!CONTRACT_ID) {
+    throw new Error(
+      "The invoice contract is not configured. Set VITE_CONTRACT_ID after deploying to testnet.",
+    );
+  }
+}
+
+async function signWithSelectedWallet(transaction: Transaction): Promise<Transaction> {
+  const kit = await getWalletKit();
+  const { signedTxXdr } = await kit.signTransaction(transaction.toXDR(), {
+    networkPassphrase: Networks.TESTNET,
+  });
+  if (!signedTxXdr) throw new Error("The wallet did not return a signed transaction.");
+  return new Transaction(signedTxXdr, Networks.TESTNET);
+}
+
+async function submitContractCall(source: string, operation: xdr.Operation): Promise<string> {
+  try {
+    const account = await server.loadAccount(source);
+    const transaction = new TransactionBuilder(account, {
+      fee: BASE_FEE,
+      networkPassphrase: Networks.TESTNET,
+    })
+      .addOperation(operation)
+      .setTimeout(60)
+      .build();
+    const prepared = await rpcServer.prepareTransaction(transaction);
+    const signed = await signWithSelectedWallet(prepared);
+    const sent = await rpcServer.sendTransaction(signed);
+
+    if (sent.status === "ERROR") {
+      throw new Error("The Stellar RPC rejected the contract transaction.");
+    }
+
+    for (let attempt = 0; attempt < 20; attempt += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      const result = await rpcServer.getTransaction(sent.hash);
+      if (result.status === "SUCCESS") return sent.hash;
+      if (result.status === "FAILED") {
+        throw new Error("The contract transaction failed on the Stellar testnet.");
+      }
+    }
+    throw new Error("The transaction is still pending. Check Stellar Expert using its hash.");
+  } catch (error) {
+    throw new Error(classifyWalletError(error));
+  }
 }
 
 export async function readInvoices(): Promise<Invoice[]> {
@@ -158,7 +249,46 @@ export async function readInvoices(): Promise<Invoice[]> {
 }
 
 export async function findInvoice(id: string): Promise<Invoice | null> {
-  return await serverGetInvoice(id);
+  return await serverGetInvoice({ data: id });
+}
+
+export function subscribeToInvoiceEvents(
+  onEvent: (txHash: string) => void,
+  onError?: (error: Error) => void,
+): () => void {
+  if (!CONTRACT_ID) return () => undefined;
+  let active = true;
+  let cursor: string | undefined;
+  let startLedger: number | undefined;
+
+  async function poll() {
+    try {
+      if (startLedger === undefined) {
+        startLedger = (await rpcServer.getLatestLedger()).sequence;
+      }
+      const response = await rpcServer.getEvents(
+        cursor
+          ? { filters: [{ type: "contract", contractIds: [CONTRACT_ID] }], cursor, limit: 50 }
+          : {
+              filters: [{ type: "contract", contractIds: [CONTRACT_ID] }],
+              startLedger,
+              limit: 50,
+            },
+      );
+      if (!active) return;
+      cursor = response.cursor;
+      response.events.forEach((event) => onEvent(event.txHash));
+    } catch (error) {
+      if (active && onError) onError(new Error(classifyWalletError(error)));
+    }
+  }
+
+  void poll();
+  const timer = window.setInterval(() => void poll(), 5000);
+  return () => {
+    active = false;
+    window.clearInterval(timer);
+  };
 }
 
 export function truncateAddr(addr: string) {
@@ -170,17 +300,22 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   const [balance, setBalance] = useState(0);
   const [connecting, setConnecting] = useState(false);
   const [funding, setFunding] = useState(false);
+  const [walletName, setWalletName] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const connect = useCallback(async () => {
     setConnecting(true);
+    setError(null);
     try {
-      const { address, balance } = await connectWallet();
+      const { address, balance, walletName } = await connectWallet();
       setAddress(address);
       setBalance(balance);
-    } catch (err: any) {
+      setWalletName(walletName);
+    } catch (err) {
       console.error("Wallet connection failed:", err);
-      // Soft failure inside provider, errors are handled at form calls
-      throw err;
+      const message = classifyWalletError(err);
+      setError(message);
+      throw new Error(message);
     } finally {
       setConnecting(false);
     }
@@ -189,6 +324,8 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   const disconnect = useCallback(() => {
     setAddress(null);
     setBalance(0);
+    setWalletName(null);
+    setError(null);
   }, []);
 
   const fundWallet = useCallback(async () => {
@@ -212,6 +349,8 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         balance,
         connecting,
         funding,
+        walletName,
+        error,
         connect,
         disconnect,
         fundWallet,
