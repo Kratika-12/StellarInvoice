@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { ArrowUpRight, Inbox, PlusCircle, Search } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
-import { readInvoices, type Invoice } from "@/lib/stellar";
+import { readInvoices, subscribeToInvoiceEvents, type Invoice } from "@/lib/stellar";
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({
@@ -23,18 +23,25 @@ function Dashboard() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let mounted = true;
     async function load() {
-      setLoading(true);
       try {
         const data = await readInvoices();
-        setInvoices(data);
+        if (mounted) setInvoices(data);
       } catch (err) {
         console.error("Failed to load invoices:", err);
       } finally {
-        setLoading(false);
+        if (mounted) setLoading(false);
       }
     }
     load();
+
+    // Refresh from actual Soroban contract events.
+    const unsubscribe = subscribeToInvoiceEvents(() => void load());
+    return () => {
+      mounted = false;
+      unsubscribe();
+    };
   }, []);
 
   const filtered = invoices.filter((i) => {
@@ -55,7 +62,9 @@ function Dashboard() {
       <div className="flex flex-wrap items-end justify-between gap-4 pt-4">
         <div>
           <h1 className="text-4xl font-extrabold tracking-tight">Your invoices 📬</h1>
-          <p className="mt-1 text-muted-foreground">Every request you've sent, in one cozy place.</p>
+          <p className="mt-1 text-muted-foreground">
+            Every request you've sent, in one cozy place.
+          </p>
         </div>
         <Link
           to="/"
@@ -66,8 +75,18 @@ function Dashboard() {
       </div>
 
       <div className="mt-6 grid gap-4 sm:grid-cols-3">
-        <StatCard emoji="📋" label="Total invoices" value={invoices.length.toString()} tone="neutral" />
-        <StatCard emoji="⏳" label="Pending" value={`${totalPending.toFixed(2)} XLM`} tone="warning" />
+        <StatCard
+          emoji="📋"
+          label="Total invoices"
+          value={invoices.length.toString()}
+          tone="neutral"
+        />
+        <StatCard
+          emoji="⏳"
+          label="Pending"
+          value={`${totalPending.toFixed(2)} XLM`}
+          tone="warning"
+        />
         <StatCard emoji="✅" label="Paid" value={`${totalPaid.toFixed(2)} XLM`} tone="success" />
       </div>
 
@@ -102,7 +121,9 @@ function Dashboard() {
         {loading ? (
           <div className="col-span-full py-20 text-center">
             <span className="inline-block h-8 w-8 animate-spin rounded-full border-[3px] border-primary/40 border-t-primary" />
-            <p className="mt-3 text-sm font-bold text-muted-foreground">Loading invoices from database…</p>
+            <p className="mt-3 text-sm font-bold text-muted-foreground">
+              Loading invoices from database…
+            </p>
           </div>
         ) : filtered.length === 0 ? (
           <EmptyState hasAny={invoices.length > 0} />

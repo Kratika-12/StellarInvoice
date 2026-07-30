@@ -15,6 +15,7 @@ import { AppShell } from "@/components/AppShell";
 import {
   findInvoice,
   payInvoice,
+  subscribeToInvoiceEvents,
   truncateAddr,
   useWallet,
   type Invoice,
@@ -37,23 +38,35 @@ function PayPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let mounted = true;
     async function load() {
-      setLoading(true);
       try {
         const inv = await findInvoice(id);
-        setInvoice(inv || null);
-        if (inv?.status === "paid" && inv.txHash) {
-          setTxHash(inv.txHash);
-          setStatus("success");
+        if (mounted) {
+          setInvoice(inv || null);
+          if (inv?.status === "paid" && status !== "success") {
+            if (inv.txHash) setTxHash(inv.txHash);
+            setStatus("success");
+          }
         }
       } catch (err) {
         console.error("Failed to load invoice:", err);
       } finally {
-        setLoading(false);
+        if (mounted) setLoading(false);
       }
     }
     load();
-  }, [id]);
+
+    // Refresh as soon as the Soroban RPC reports an invoice event.
+    const unsubscribe = subscribeToInvoiceEvents(() => {
+      if (status !== "success") void load();
+    });
+
+    return () => {
+      mounted = false;
+      unsubscribe();
+    };
+  }, [id, status]);
 
   async function handlePay() {
     if (!invoice) return;
@@ -82,7 +95,9 @@ function PayPage() {
         <div className="mx-auto mt-16 max-w-md rounded-3xl bg-card p-8 text-center ring-1 ring-border">
           <div className="flex flex-col items-center justify-center gap-4 py-8">
             <Spinner />
-            <span className="text-lg font-bold text-muted-foreground">Reading invoice details…</span>
+            <span className="text-lg font-bold text-muted-foreground">
+              Reading invoice details…
+            </span>
           </div>
         </div>
       </AppShell>
@@ -163,7 +178,15 @@ function PayPage() {
                   disabled={connecting}
                   className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-primary px-5 py-4 text-lg font-extrabold text-primary-foreground shadow-[var(--shadow-soft)] transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-lift)] disabled:opacity-70"
                 >
-                  {connecting ? <><Spinner /> Connecting…</> : <><Wallet className="h-5 w-5" /> Connect Wallet</>}
+                  {connecting ? (
+                    <>
+                      <Spinner /> Connecting…
+                    </>
+                  ) : (
+                    <>
+                      <Wallet className="h-5 w-5" /> Connect Wallet
+                    </>
+                  )}
                 </button>
               ) : (
                 <>
@@ -177,7 +200,9 @@ function PayPage() {
                     className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-primary px-5 py-4 text-lg font-extrabold text-primary-foreground shadow-[var(--shadow-soft)] transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-lift)] disabled:cursor-not-allowed disabled:opacity-70"
                   >
                     {status === "paying" ? (
-                      <><Spinner /> Sending payment…</>
+                      <>
+                        <Spinner /> Sending payment…
+                      </>
                     ) : Number(invoice.amount) > balance ? (
                       <>Not enough XLM</>
                     ) : (
@@ -205,7 +230,9 @@ function StatusPill({ status }: { status: Status }) {
     error: { bg: "bg-destructive", fg: "text-destructive-foreground", label: "Retry" },
   }[status];
   return (
-    <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold ${map.bg} ${map.fg}`}>
+    <span
+      className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold ${map.bg} ${map.fg}`}
+    >
       <span className="inline-block h-1.5 w-1.5 rounded-full bg-current" />
       {map.label}
     </span>
@@ -229,17 +256,25 @@ function SuccessState({
       <h3 className="mt-3 text-xl font-extrabold text-[oklch(0.3_0.1_155)]">
         Payment successful! 🎉
       </h3>
-      <p className="mt-1 text-sm text-[oklch(0.35_0.08_155)]">Nice work — the sender will thank you.</p>
+      <p className="mt-1 text-sm text-[oklch(0.35_0.08_155)]">
+        Nice work — the sender will thank you.
+      </p>
 
       <div className="mt-5 flex items-center gap-2 rounded-full bg-white p-1.5 pl-4 ring-1 ring-border">
-        <span className="flex-1 truncate font-mono text-xs text-muted-foreground">
-          {txHash}
-        </span>
+        <span className="flex-1 truncate font-mono text-xs text-muted-foreground">{txHash}</span>
         <button
           onClick={onCopy}
           className="inline-flex items-center gap-1.5 rounded-full bg-foreground px-3 py-1.5 text-xs font-bold text-background transition hover:-translate-y-0.5"
         >
-          {copied ? <><Check className="h-3.5 w-3.5" /> Copied</> : <><Copy className="h-3.5 w-3.5" /> Copy</>}
+          {copied ? (
+            <>
+              <Check className="h-3.5 w-3.5" /> Copied
+            </>
+          ) : (
+            <>
+              <Copy className="h-3.5 w-3.5" /> Copy
+            </>
+          )}
         </button>
       </div>
 
