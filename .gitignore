@@ -15,6 +15,11 @@ dist-ssr
 .tanstack/**
 .nitro
 *.local
+db.json
+stellar.exe
+stellar.tar.gz
+contracts/**/target/
+contracts/**/test_snapshots/
 
 # Wrangler / Cloudflare
 .wrangler/

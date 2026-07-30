@@ -20,8 +20,11 @@ stellar network add testnet `
 Write-Host "Network configured." -ForegroundColor Green
 
 # Step 3: Generate/use deployer keypair funded by Friendbot
-Write-Host "`n[3/6] Generating funded deployer keypair..." -ForegroundColor Yellow
-stellar keys generate deployer --network testnet --fund
+Write-Host "`n[3/6] Checking funded deployer keypair..." -ForegroundColor Yellow
+$deployer = stellar keys address deployer 2>$null
+if (-not $deployer) {
+  stellar keys generate deployer --network testnet --fund
+}
 stellar keys address deployer
 
 # Step 4: Build the WASM contract
@@ -50,6 +53,10 @@ stellar contract invoke `
   -- `
   get_invoice `
   --id "test123"
+
+# Save the public contract ID for the Vite frontend.
+$envFile = Join-Path (Split-Path $PSScriptRoot -Parent) ".env.local"
+Set-Content -LiteralPath $envFile -Value "VITE_CONTRACT_ID=$CONTRACT_ID"
 
 Write-Host "`n=== Deploy Complete! ===" -ForegroundColor Cyan
 Write-Host "Contract ID: $CONTRACT_ID" -ForegroundColor Green
