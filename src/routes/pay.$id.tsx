@@ -324,10 +324,10 @@ function Confetti() {
   const pieces = useMemo(
     () =>
       Array.from({ length: 24 }).map((_, i) => ({
-        left: Math.random() * 100,
-        delay: Math.random() * 0.6,
+        left: (i * 37) % 100,
+        delay: ((i * 11) % 6) / 10,
         color: ["#ff8a65", "#7dd3fc", "#facc15", "#a78bfa", "#4ade80"][i % 5],
-        rotate: Math.random() * 360,
+        rotate: (i * 47) % 360,
       })),
     [],
   );

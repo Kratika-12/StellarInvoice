@@ -415,29 +415,6 @@ stellar-spark-main/
 ![GitHub Actions frontend and contract checks plus Vercel deployment passing](screenshots/cipassing%20test.png)
 
 
-## Final Submission Actions
-
-These steps require the project owner’s browser, wallet approval, hosting account, or submission
-account and cannot be completed by a local build alone:
-
-1. Push the current working tree to the public GitHub repository.
-2. Confirm the updated GitHub Actions workflow still passes on `main`.
-3. Record and upload the 1–2 minute walkthrough described in Demo Walkthrough.
-4. Add the video URL and submit the repository for each selected challenge period.
-
----
-
-## Next Iteration Plan
-
-- Replace the local JSON metadata index with a transactional hosted database.
-- Add authenticated, wallet-scoped dashboard queries.
-- Store and query the complete invoice index from contract events.
-- Add invoice expiry and partial-payment support.
-- Add USD estimates, templates, recurring invoices, and payment reminders.
-- Complete an independent contract security review before Mainnet.
-
----
-
 ## Documentation
 
 - [Project context](CONTEXT.md)

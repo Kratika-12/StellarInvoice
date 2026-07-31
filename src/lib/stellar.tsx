@@ -8,6 +8,7 @@ import {
   nativeToScVal,
   Networks,
   rpc,
+  scValToNative,
   Transaction,
   TransactionBuilder,
   type xdr,
@@ -39,6 +40,8 @@ const WalletContext = createContext<WalletState | null>(null);
 
 const HORIZON_URL = "https://horizon-testnet.stellar.org";
 const RPC_URL = "https://soroban-testnet.stellar.org";
+const PUBLIC_READ_SOURCE = "GCMURRXBRCMC6CKA7V34LNJJLXGXF75RN74H4TI5JTUUPVOI4XMPXFD6";
+const LOCAL_INVOICES_KEY = "stellar-invoice:invoices";
 export const CONTRACT_ID = import.meta.env.VITE_CONTRACT_ID?.trim() ?? "";
 const server = new Horizon.Server(HORIZON_URL);
 const rpcServer = new rpc.Server(RPC_URL);
@@ -145,12 +148,15 @@ export async function createInvoice(data: {
       nativeToScVal(data.description),
     ),
   );
-  return await serverCreateInvoice({ data: { ...data, id, contractTxHash } });
+  const invoice = await serverCreateInvoice({ data: { ...data, id, contractTxHash } });
+  cacheInvoice(invoice);
+  return invoice;
 }
 
 export async function payInvoice(id: string): Promise<{ txHash: string }> {
-  // 1. Fetch invoice details from server
-  const invoice = await serverGetInvoice({ data: id });
+  // Read canonical invoice state from Soroban. The server JSON file is only a cache because
+  // serverless filesystems (including Vercel's) are ephemeral and not shared across instances.
+  const invoice = await findInvoice(id);
   if (!invoice) {
     throw new Error("Invoice not found on the server");
   }
@@ -184,8 +190,13 @@ export async function payInvoice(id: string): Promise<{ txHash: string }> {
     ),
   );
 
-  // 8. Update database invoice state
-  await serverMarkPaid({ data: { id, txHash } });
+  const paidInvoice = { ...invoice, status: "paid" as const, txHash };
+  cacheInvoice(paidInvoice);
+  try {
+    await serverMarkPaid({ data: { id, txHash } });
+  } catch (error) {
+    console.warn("Invoice cache could not be updated; Soroban payment succeeded.", error);
+  }
 
   return { txHash };
 }
@@ -240,16 +251,103 @@ async function submitContractCall(source: string, operation: xdr.Operation): Pro
 }
 
 export async function readInvoices(): Promise<Invoice[]> {
+  const cached = readCachedInvoices();
   try {
-    return await serverGetAllInvoices();
+    const serverInvoices = await serverGetAllInvoices();
+    const merged = new Map([...serverInvoices, ...cached].map((invoice) => [invoice.id, invoice]));
+    const invoices = await Promise.all(
+      [...merged.values()].map(
+        async (invoice) => (await readContractInvoice(invoice.id)) ?? invoice,
+      ),
+    );
+    invoices.forEach(cacheInvoice);
+    return invoices.sort((a, b) => b.createdAt - a.createdAt);
   } catch (err) {
     console.error("Failed to read server invoices:", err);
-    return [];
+    return cached;
   }
 }
 
 export async function findInvoice(id: string): Promise<Invoice | null> {
-  return await serverGetInvoice({ data: id });
+  const onChainInvoice = await readContractInvoice(id);
+  if (onChainInvoice) {
+    const cached = readCachedInvoices().find((invoice) => invoice.id === id);
+    const invoice = {
+      ...onChainInvoice,
+      dueDate: cached?.dueDate,
+      createdAt: cached?.createdAt ?? onChainInvoice.createdAt,
+      contractTxHash: cached?.contractTxHash,
+      txHash: cached?.txHash,
+    };
+    cacheInvoice(invoice);
+    return invoice;
+  }
+
+  try {
+    return await serverGetInvoice({ data: id });
+  } catch {
+    return readCachedInvoices().find((invoice) => invoice.id === id) ?? null;
+  }
+}
+
+async function readContractInvoice(id: string): Promise<Invoice | null> {
+  if (!CONTRACT_ID) return null;
+
+  try {
+    const account = await server.loadAccount(PUBLIC_READ_SOURCE);
+    const transaction = new TransactionBuilder(account, {
+      fee: BASE_FEE,
+      networkPassphrase: Networks.TESTNET,
+    })
+      .addOperation(new Contract(CONTRACT_ID).call("get_invoice", nativeToScVal(id)))
+      .setTimeout(30)
+      .build();
+    const simulation = await rpcServer.simulateTransaction(transaction);
+    if (!rpc.Api.isSimulationSuccess(simulation) || !simulation.result) return null;
+
+    const value = scValToNative(simulation.result.retval) as {
+      id: string;
+      creator: string;
+      amount: bigint;
+      description: string;
+      status: number;
+    } | null;
+    if (!value) return null;
+
+    return {
+      id: String(value.id),
+      amount: stroopsToXlm(BigInt(value.amount)),
+      description: String(value.description),
+      createdAt: Date.now(),
+      from: String(value.creator),
+      status: Number(value.status) === 1 ? "paid" : "pending",
+    };
+  } catch (error) {
+    console.error("Failed to read invoice from Soroban:", error);
+    return null;
+  }
+}
+
+function stroopsToXlm(stroops: bigint): string {
+  const whole = stroops / 10_000_000n;
+  const fraction = (stroops % 10_000_000n).toString().padStart(7, "0").replace(/0+$/, "");
+  return fraction ? `${whole}.${fraction}` : whole.toString();
+}
+
+function readCachedInvoices(): Invoice[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const value = window.localStorage.getItem(LOCAL_INVOICES_KEY);
+    return value ? (JSON.parse(value) as Invoice[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function cacheInvoice(invoice: Invoice): void {
+  if (typeof window === "undefined") return;
+  const invoices = readCachedInvoices().filter((item) => item.id !== invoice.id);
+  window.localStorage.setItem(LOCAL_INVOICES_KEY, JSON.stringify([invoice, ...invoices]));
 }
 
 export function subscribeToInvoiceEvents(
