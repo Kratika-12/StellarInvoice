@@ -14,7 +14,7 @@ The codebase now implements the technical requirements for Levels 1, 2, and 3:
    - **Playful, Production-Ready UI:** Fully mobile-responsive, utilizing modern CSS practices, loading spinners, and robust error/success feedback states (e.g., confetti on success).
    - **Contract Integration:** Creates and pays invoices through the deployed Soroban contract.
    - **Real-Time Event Streaming:** Polls the Stellar RPC contract event stream and refreshes the Dashboard and Pay Invoice pages when events arrive.
-   - **Unit Tests:** Vitest currently reports 5 passing frontend tests.
+   - **Unit Tests:** Vitest currently reports 4 passing frontend tests.
 
 2. **Smart Contracts (Soroban + Rust)**
    - **Location:** `contracts/invoice/src/lib.rs`
@@ -39,12 +39,11 @@ The codebase now implements the technical requirements for Levels 1, 2, and 3:
 - **Deployment transaction:** `ae2fa58566cc641853b7c5f000570cb0ffef6005855d81009a1147904f0832a1`
 - **Verified builds:** frontend production build and `wasm32v1-none` release build pass locally.
 
-## Submission Work Remaining
+## Submission Status
 
-1. Push the completed commits and confirm GitHub Actions passes.
-2. Deploy the frontend publicly and add its URL to the README.
-3. Capture mobile, wallet selector, CI, tests, and successful payment screenshots.
-4. Record and link the required 1–2 minute demo video.
+The public repository, live Vercel deployment, contract address, verified transaction hashes,
+mobile and product screenshots, passing CI evidence, passing test evidence, and demo video are
+documented in `README.md`.
 
 ## Resources
 - **Stellar Developer Docs:** https://developers.stellar.org/docs
