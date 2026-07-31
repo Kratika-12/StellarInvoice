@@ -189,7 +189,7 @@ cargo build --target wasm32v1-none --release
 
 ### Requirements
 
-- Node.js 20 or newer
+- Node.js 22.12 or newer
 - npm
 - Rust stable
 - Stellar CLI 25 or newer
