@@ -19,57 +19,82 @@ It combines multi-wallet support, QR-code payment links, native XLM transfers, c
 
 | Resource               | Link                                                                                                                                  |
 | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| Frontend               | Add the public deployment URL before submission                                                                                       |
+| Frontend               | [Open StellarInvoice](https://stellar-invoice-mauve.vercel.app/)                                                                      |
 | Contract               | [Open in Stellar Lab](https://lab.stellar.org/r/testnet/contract/CAZDIM6GMNYMY7FRY3LOZQ5IOXM3QE55GHMHNOYKNXI52ATE5JZ3QSZL)            |
 | Deployment transaction | [View on Stellar Expert](https://stellar.expert/explorer/testnet/tx/ae2fa58566cc641853b7c5f000570cb0ffef6005855d81009a1147904f0832a1) |
+| Payment transaction    | [View on Stellar Expert](https://stellar.expert/explorer/testnet/tx/cc715fef46716ac9c0ad522966d977b938be4b7b99533866d9a6a6a7ca1fd63e) |
 | Demo video             | Add the 1–2 minute demo video before submission                                                                                       |
 
 ---
 
-## Levels 1–3 Submission Coverage
+## 📱 Mobile UI & 🚀 CI/CD Evidence
 
-| Level | Requirement | Implementation | Evidence needed |
-| --- | --- | --- | --- |
-| Level 1 | Freighter and Testnet | Freighter is available through Stellar Wallets Kit and the app uses Testnet | Wallet-connected screenshot |
-| Level 1 | Connect and disconnect | Wallet selector, persistent state, guarded routes, and disconnect redirect | Demo recording |
-| Level 1 | XLM balance | Horizon balance fetch, balance badge, and Friendbot funding action | Balance screenshot |
-| Level 1 | XLM transaction | `pay_invoice` transfers native XLM through the Stellar Asset Contract | Payment hash and screenshot |
-| Level 1 | Transaction feedback | Signing, pending, success, failure, hash, and Explorer states | Transaction screenshot |
-| Level 2 | Multi-wallet support | Stellar Wallets Kit wallet selector | Wallet-selector screenshot |
-| Level 2 | Three error types | Missing wallet, rejected request, insufficient balance, network, and validation errors | Demo or documentation |
-| Level 2 | Deployed contract | Testnet contract address and deployment transaction are documented below | Explorer link |
-| Level 2 | Frontend contract calls | Frontend invokes `create_invoice`, `get_invoice`, and `pay_invoice` | Interaction hash |
-| Level 2 | Real-time events | Soroban RPC event polling refreshes invoice views | Demo recording |
-| Level 3 | Advanced contract | Authenticated lifecycle, validation, persistent state, and payment protection | Source and tests |
-| Level 3 | Inter-contract communication | Invoice contract calls the native Stellar Asset Contract | Test and payment hash |
-| Level 3 | CI/CD | Actions runs lint, typecheck, frontend tests/build, contract tests/build, and uploads WASM | Actions screenshot |
-| Level 3 | Deployment workflow | Repeatable PowerShell Testnet deployment script | `contracts/deploy.ps1` |
-| Level 3 | Responsive production UI | Public landing, protected create/dashboard routes, payer page, and complete states | Mobile screenshot |
-| Level 3 | Automated tests | 5 frontend and 4 contract tests pass locally | Test screenshot |
-| Level 3 | Documentation | Setup, architecture, deployment, testing, and demo walkthrough are documented here | Live URL and video |
+| Mobile-responsive interface | CI/CD pipeline passing |
+| --- | --- |
+| ![StellarInvoice mobile create-invoice interface](screenshots/mobileResponsive.png) | ![GitHub, frontend, contract, and Vercel checks passing](screenshots/cipassing%20test.png) |
 
-## Orange Belt Submission Checklist
+The CI pipeline validates the frontend and Soroban contract, while Vercel automatically deploys
+the production application after successful repository updates.
 
-| Requirement                             | Status                                        |
-| --------------------------------------- | --------------------------------------------- |
-| Advanced smart-contract development     | ✅ Complete                                   |
-| Inter-contract communication            | ✅ Native XLM Stellar Asset Contract transfer |
-| Event streaming and real-time updates   | ✅ Soroban RPC event polling                  |
-| CI/CD pipeline                          | ✅ GitHub Actions workflow configured         |
-| Smart-contract deployment workflow      | ✅ PowerShell deployment script               |
-| Mobile-responsive frontend              | ✅ Verified at 375 px                         |
-| Error handling and loading states       | ✅ Complete                                   |
-| Frontend tests                          | ✅ 5 passing                                  |
-| Smart-contract tests                    | ✅ 4 passing                                  |
-| Production-ready architecture practices | ✅ Implemented and documented                 |
-| Public GitHub repository                | ⏳ Remote configured; confirm public visibility |
-| Minimum 10 meaningful commits           | ✅ 11 commits prepared                        |
-| Deployed contract address               | ✅ Published below                            |
-| Contract deployment transaction         | ✅ Published below                            |
-| Live frontend URL                       | ⏳ Deploy and add before submission           |
-| Successful interaction transaction     | ⏳ Create/pay an invoice and add its hash     |
-| Required screenshots                    | ⏳ Capture after the CI and payment demo      |
-| Demo video                              | ⏳ Record before submission                   |
+---
+
+## Level 1 — White Belt
+
+Focus: wallet connection, Testnet balance handling, and a successful XLM transaction.
+
+| Requirement | Status | StellarInvoice implementation and evidence |
+| --- | --- | --- |
+| Freighter wallet on Testnet | ✅ Complete | Freighter is available through Stellar Wallets Kit; the application is configured for Stellar Testnet |
+| Connect and disconnect | ✅ Complete | Wallet selection, persistent connection state, protected routes, and automatic redirects |
+| Display XLM balance | ✅ Complete | Horizon balance lookup and the connected-wallet balance badge |
+| Send an XLM transaction | ✅ Complete | `pay_invoice` transfers native XLM through the Stellar Asset Contract |
+| Success and failure feedback | ✅ Complete | Pending, signing, success, error, transaction hash, and Explorer states |
+| README and screenshots | ✅ Complete | Landing, connected wallet, balance, and successful payment screenshots are included below |
+| Public repository | ✅ Complete | [Kratika-12/StellarInvoice](https://github.com/Kratika-12/StellarInvoice) |
+
+## Level 2 — Yellow Belt
+
+Focus: multi-wallet support, deployed smart-contract interaction, and real-time synchronization.
+
+| Requirement | Status | StellarInvoice implementation and evidence |
+| --- | --- | --- |
+| Stellar Wallets Kit | ✅ Complete | Multi-wallet selector supporting Freighter, Albedo, xBull, HOT Wallet, Rabet, LOBSTR, Hana, Klever, and others |
+| Three or more error types | ✅ Complete | Missing wallet, rejected signature, insufficient balance, RPC/network, validation, and contract errors |
+| Contract deployed on Testnet | ✅ Complete | Contract ID and deployment transaction are published below |
+| Contract called from frontend | ✅ Complete | Frontend invokes `create_invoice`, `get_invoice`, and `pay_invoice` |
+| Read and write contract data | ✅ Complete | Invoice creation, lookup, status, payer, and transaction state |
+| Transaction status visible | ✅ Complete | Pending, successful, and failed transaction states with Explorer link |
+| Real-time event handling | ✅ Complete | Soroban RPC event polling refreshes dashboard and payer views |
+| Interaction transaction | ✅ Complete | [View the payment on Stellar Expert](https://stellar.expert/explorer/testnet/tx/cc715fef46716ac9c0ad522966d977b938be4b7b99533866d9a6a6a7ca1fd63e) |
+| Multi-wallet screenshot | ✅ Complete | Included in the Screenshots section |
+
+## Level 3 — Orange Belt
+
+Focus: advanced contracts, production architecture, automated quality gates, and complete delivery evidence.
+
+| Requirement | Status | StellarInvoice implementation and evidence |
+| --- | --- | --- |
+| Advanced smart-contract development | ✅ Complete | Authenticated lifecycle, validation, persistent state, duplicate/payment protection, and events |
+| Inter-contract communication | ✅ Complete | Invoice contract invokes the native Stellar Asset Contract to transfer XLM |
+| Event streaming and real-time updates | ✅ Complete | Soroban RPC event polling and automatic UI refresh |
+| CI/CD pipeline | ✅ Complete | GitHub Actions runs lint, typecheck, frontend tests/build, contract tests/build, and uploads WASM; passing screenshot included |
+| Contract deployment workflow | ✅ Complete | Repeatable Testnet workflow in `contracts/deploy.ps1` |
+| Mobile-responsive frontend | ✅ Complete | Responsive landing, dashboard, create-invoice, and payer interfaces; mobile screenshot included |
+| Error handling and loading states | ✅ Complete | Wallet, network, balance, validation, contract, loading, empty, and transaction states |
+| Frontend and contract tests | ✅ Complete | 4 frontend and 4 Soroban contract tests |
+| Production-ready architecture | ✅ Complete | Typed modules, route protection, environment configuration, server functions, and documented architecture |
+| Public GitHub repository | ✅ Complete | [Kratika-12/StellarInvoice](https://github.com/Kratika-12/StellarInvoice) |
+| Minimum 10 meaningful commits | ✅ Complete | More than 10 meaningful commits prepared |
+| Live demo | ✅ Complete | [stellar-invoice-mauve.vercel.app](https://stellar-invoice-mauve.vercel.app/) |
+| Contract address and transactions | ✅ Complete | Contract ID, deployment hash, and payment hash are published below |
+| Product and mobile screenshots | ✅ Complete | Seven labeled product screenshots are included below |
+| Passing CI screenshot | ✅ Complete | GitHub Actions and Vercel checks are shown below |
+| Demo video | ⏳ Required | Record and publish a 1–2 minute walkthrough |
+
+## Final Submission Readiness
+
+The repository, live demo, deployed contract, payment transaction, documentation, and product
+screenshots are ready. The remaining owner-provided evidence is listed at the end of this README.
 
 ---
 
@@ -120,6 +145,7 @@ No wallet secret key is transmitted to or stored by the application.
 | Network                | Stellar Testnet                                                    |
 | Invoice contract ID    | `CAZDIM6GMNYMY7FRY3LOZQ5IOXM3QE55GHMHNOYKNXI52ATE5JZ3QSZL`         |
 | Deployment transaction | `ae2fa58566cc641853b7c5f000570cb0ffef6005855d81009a1147904f0832a1` |
+| Payment transaction    | `cc715fef46716ac9c0ad522966d977b938be4b7b99533866d9a6a6a7ca1fd63e` |
 | Contract functions     | `create_invoice`, `get_invoice`, `pay_invoice`                     |
 | Contract events        | `Created`, `Paid`                                                  |
 | Payment asset          | Native XLM Stellar Asset Contract                                  |
@@ -151,8 +177,8 @@ No wallet secret key is transmitted to or stored by the application.
 
 | Suite                     | Result   |
 | ------------------------- | -------- |
-| Frontend test files       | 2 passed |
-| Frontend tests            | 5 passed |
+| Frontend test files       | 1 passed |
+| Frontend tests            | 4 passed |
 | Soroban contract tests    | 4 passed |
 | TypeScript typecheck      | Passed   |
 | Production frontend build | Passed   |
@@ -317,14 +343,12 @@ stellar-spark-main/
 |-- public/
 |-- src/
 |   |-- components/
-|   |   |-- AppShell.tsx
-|   |   `-- ui/
+|   |   `-- AppShell.tsx
 |   |-- lib/
 |   |   |-- invoice.ts
 |   |   |-- invoice.test.ts
 |   |   |-- server-db.ts
-|   |   |-- stellar.tsx
-|   |   `-- utils.test.ts
+|   |   `-- stellar.tsx
 |   |-- routes/
 |   |   |-- index.tsx
 |   |   |-- create.tsx
@@ -358,18 +382,38 @@ stellar-spark-main/
 
 ## Screenshots
 
-Add the final submission screenshots under `assets/`:
+### Landing page
 
-| View                               | Suggested file               |
-| ---------------------------------- | ---------------------------- |
-| Landing and wallet-connected state | `assets/landing-wallet.png`  |
-| Multi-wallet selector              | `assets/wallet-selector.png` |
-| Mobile create-invoice UI           | `assets/mobile-create.png`   |
-| Generated invoice and QR code      | `assets/invoice-created.png` |
-| Successful payment transaction     | `assets/payment-success.png` |
-| Paid invoice dashboard             | `assets/dashboard-paid.png`  |
-| Passing GitHub Actions workflow    | `assets/ci-passing.png`      |
-| Frontend and contract test output  | `assets/tests-passing.png`   |
+![StellarInvoice landing page](screenshots/landing%20page.png)
+
+### Multi-wallet selector
+
+![Stellar Wallets Kit wallet selector](screenshots/multiwallet.png)
+
+### Dashboard
+
+![StellarInvoice dashboard](screenshots/dashboard%20page.png)
+
+### Create invoice
+
+![Create invoice form](screenshots/createinvoicepage.png)
+
+### Mobile-responsive interface
+
+![Create invoice page at a mobile viewport](screenshots/mobileResponsive.png)
+
+### Generated invoice and QR code
+
+![Created invoice with its share link and QR code](screenshots/created%20invoicewithqr.png)
+
+### Successful payment
+
+![Paid invoice with successful transaction feedback](screenshots/paidinvoice.png)
+
+### CI/CD pipeline passing
+
+![GitHub Actions frontend and contract checks plus Vercel deployment passing](screenshots/cipassing%20test.png)
+
 
 ## Final Submission Actions
 
@@ -377,13 +421,9 @@ These steps require the project owner’s browser, wallet approval, hosting acco
 account and cannot be completed by a local build alone:
 
 1. Push the current working tree to the public GitHub repository.
-2. Confirm the updated GitHub Actions workflow passes on `main`.
-3. Deploy the frontend and replace the Live Demo placeholder with its public URL.
-4. Connect two funded Testnet wallets, create an invoice, and pay it.
-5. Add the successful contract interaction/payment transaction hash and Explorer link above.
-6. Capture the eight screenshots listed in the Screenshots section.
-7. Record and upload the 1–2 minute walkthrough described in Demo Walkthrough.
-8. Add the video URL and submit the repository for each selected challenge period.
+2. Confirm the updated GitHub Actions workflow still passes on `main`.
+3. Record and upload the 1–2 minute walkthrough described in Demo Walkthrough.
+4. Add the video URL and submit the repository for each selected challenge period.
 
 ---
 

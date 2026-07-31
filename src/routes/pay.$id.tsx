@@ -134,9 +134,9 @@ function PayPage() {
           <ArrowLeft className="h-4 w-4" /> Home
         </Link>
 
-        <div className="relative overflow-hidden rounded-[2rem] bg-card p-6 shadow-[var(--shadow-lift)] ring-1 ring-border sm:p-8">
+        <div className="relative overflow-hidden rounded-3xl bg-card p-4 shadow-[var(--shadow-lift)] ring-1 ring-border sm:p-8">
           {status === "success" && <Confetti />}
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <span className="inline-flex items-center gap-1.5 rounded-full bg-secondary px-3 py-1 text-xs font-bold text-secondary-foreground">
               <Sparkles className="h-3.5 w-3.5" /> Invoice #{invoice.id}
             </span>
@@ -148,8 +148,10 @@ function PayPage() {
               Amount due
             </div>
             <div className="mt-2 flex items-baseline justify-center gap-2">
-              <span className="text-6xl font-extrabold">{invoice.amount}</span>
-              <span className="text-xl font-bold text-muted-foreground">XLM</span>
+              <span className="max-w-full break-all text-4xl font-extrabold sm:text-6xl">
+                {invoice.amount}
+              </span>
+              <span className="text-base font-bold text-muted-foreground sm:text-xl">XLM</span>
             </div>
             <p className="mt-3 text-foreground/80">"{invoice.description}"</p>
             {invoice.dueDate && (
@@ -160,7 +162,7 @@ function PayPage() {
           </div>
 
           <div className="mt-6 rounded-2xl bg-secondary/60 p-4">
-            <div className="flex items-center justify-between text-sm">
+            <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
               <span className="text-muted-foreground">From</span>
               <span className="font-mono font-bold">{truncateAddr(invoice.from)}</span>
             </div>

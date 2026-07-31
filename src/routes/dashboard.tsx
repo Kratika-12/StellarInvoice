@@ -71,16 +71,16 @@ function Dashboard() {
 
   return (
     <AppShell>
-      <div className="flex flex-wrap items-end justify-between gap-4 pt-4">
+      <div className="flex flex-col items-start gap-4 pt-3 sm:flex-row sm:items-end sm:justify-between sm:pt-4">
         <div>
-          <h1 className="text-4xl font-extrabold tracking-tight">Your invoices 📬</h1>
+          <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl">Your invoices 📬</h1>
           <p className="mt-1 text-muted-foreground">
             Every request you've sent, in one cozy place.
           </p>
         </div>
         <Link
           to="/create"
-          className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-3 font-extrabold text-primary-foreground shadow-[var(--shadow-soft)] transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-lift)]"
+          className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full bg-primary px-5 py-2.5 font-extrabold text-primary-foreground shadow-[var(--shadow-soft)] transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-lift)] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:w-auto"
         >
           <PlusCircle className="h-5 w-5" /> New invoice
         </Link>
@@ -102,13 +102,13 @@ function Dashboard() {
         <StatCard emoji="✅" label="Paid" value={`${totalPaid.toFixed(2)} XLM`} tone="success" />
       </div>
 
-      <div className="mt-8 flex flex-wrap items-center justify-between gap-3">
-        <div className="inline-flex items-center gap-1 rounded-full bg-secondary/70 p-1">
+      <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="grid w-full grid-cols-3 items-center gap-1 rounded-full bg-secondary/70 p-1 sm:inline-flex sm:w-auto">
           {(["all", "pending", "paid"] as const).map((f) => (
             <button
               key={f}
               onClick={() => setFilter(f)}
-              className={`rounded-full px-4 py-1.5 text-sm font-bold capitalize transition ${
+              className={`min-h-10 rounded-full px-3 py-1.5 text-sm font-bold capitalize transition focus-visible:ring-2 focus-visible:ring-ring ${
                 filter === f
                   ? "bg-foreground text-background"
                   : "text-muted-foreground hover:text-foreground"
@@ -118,13 +118,14 @@ function Dashboard() {
             </button>
           ))}
         </div>
-        <div className="flex items-center gap-2 rounded-full bg-white px-4 py-2 ring-1 ring-border">
+        <div className="flex min-h-11 w-full items-center gap-2 rounded-full bg-card px-4 py-2 ring-1 ring-border focus-within:ring-2 focus-within:ring-ring sm:w-auto">
           <Search className="h-4 w-4 text-muted-foreground" />
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search description…"
-            className="w-40 bg-transparent text-sm font-semibold outline-none placeholder:text-muted-foreground/70 sm:w-56"
+            aria-label="Search invoices by description"
+            className="min-w-0 flex-1 bg-transparent text-sm font-semibold outline-none placeholder:text-muted-foreground/70 sm:w-56"
           />
         </div>
       </div>
@@ -203,12 +204,12 @@ function InvoiceCard({ invoice }: { invoice: Invoice }) {
           {paid ? "Paid" : "Pending"}
         </span>
       </div>
-      <div className="mt-5 flex items-end justify-between">
+      <div className="mt-5 flex flex-wrap items-end justify-between gap-2">
         <div>
-          <span className="text-3xl font-extrabold">{invoice.amount}</span>
+          <span className="break-all text-2xl font-extrabold sm:text-3xl">{invoice.amount}</span>
           <span className="ml-1 text-sm font-bold text-muted-foreground">XLM</span>
         </div>
-        <span className="inline-flex items-center gap-1 text-sm font-bold text-primary opacity-0 transition group-hover:opacity-100">
+        <span className="inline-flex items-center gap-1 text-sm font-bold text-primary sm:opacity-0 sm:transition sm:group-hover:opacity-100">
           Open <ArrowUpRight className="h-4 w-4" />
         </span>
       </div>

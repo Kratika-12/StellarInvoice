@@ -25,22 +25,22 @@ function LandingPage() {
         <div className="pointer-events-none absolute -left-24 top-10 h-64 w-64 rounded-full bg-primary/15 blur-3xl" />
         <div className="pointer-events-none absolute -right-16 top-32 h-72 w-72 rounded-full bg-secondary blur-3xl" />
 
-        <section className="relative grid items-center gap-12 py-10 md:grid-cols-[1.1fr_0.9fr] md:py-20">
+        <section className="relative grid items-center gap-8 py-7 md:grid-cols-[1.1fr_0.9fr] md:gap-12 md:py-20">
           <div>
             <span className="inline-flex items-center gap-1.5 rounded-full bg-card px-3 py-1 text-xs font-bold text-primary ring-1 ring-border">
               <Zap className="h-3.5 w-3.5" aria-hidden="true" />
               Stellar Testnet · No sign-up
             </span>
-            <h1 className="mt-5 max-w-3xl text-5xl font-extrabold leading-[1.05] tracking-tight sm:text-6xl">
+            <h1 className="mt-5 max-w-3xl text-4xl font-extrabold leading-[1.05] tracking-tight sm:text-5xl lg:text-6xl">
               Friendly invoices.
               <span className="block text-primary">Fast XLM payments.</span>
             </h1>
-            <p className="mt-5 max-w-xl text-lg text-muted-foreground">
+            <p className="mt-4 max-w-xl text-base text-muted-foreground sm:text-lg">
               Create a payment request, share its link or QR code, and receive payment directly
               through Stellar.
             </p>
 
-            <div className="mt-8 flex flex-wrap gap-3">
+            <div className="mt-7 grid gap-3 min-[480px]:flex min-[480px]:flex-wrap">
               {address ? (
                 <Link
                   to="/create"
@@ -72,7 +72,7 @@ function LandingPage() {
             </div>
           </div>
 
-          <div className="rounded-[2rem] bg-card p-6 shadow-[var(--shadow-lift)] ring-1 ring-border sm:p-8">
+          <div className="rounded-3xl bg-card p-4 shadow-[var(--shadow-lift)] ring-1 ring-border sm:p-8">
             <div className="flex items-center justify-between gap-3">
               <span className="inline-flex items-center gap-2 text-sm font-extrabold">
                 <Sparkles className="h-4 w-4 text-primary" aria-hidden="true" />
