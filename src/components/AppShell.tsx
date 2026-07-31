@@ -1,9 +1,10 @@
-import { Link, useRouterState } from "@tanstack/react-router";
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { Wallet, Sparkles, LogOut, LayoutGrid, PlusCircle } from "lucide-react";
 import { useWallet, truncateAddr } from "@/lib/stellar";
 import type { ReactNode } from "react";
 
 function WalletBadge() {
+  const navigate = useNavigate();
   const {
     address,
     balance,
@@ -16,11 +17,25 @@ function WalletBadge() {
     fundWallet,
   } = useWallet();
 
+  async function handleConnect() {
+    try {
+      await connect();
+      await navigate({ to: "/dashboard", replace: true });
+    } catch {
+      // The wallet provider exposes the actionable error beside the button.
+    }
+  }
+
+  function handleDisconnect() {
+    disconnect();
+    void navigate({ to: "/", replace: true });
+  }
+
   if (!address) {
     return (
       <div className="flex flex-col items-end gap-1">
         <button
-          onClick={connect}
+          onClick={handleConnect}
           disabled={connecting}
           aria-busy={connecting}
           className="group inline-flex min-h-10 items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-bold text-primary-foreground shadow-[var(--shadow-soft)] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-safe:transition-transform motion-safe:hover:-translate-y-0.5 disabled:opacity-70"
@@ -62,7 +77,7 @@ function WalletBadge() {
             🎁 {funding ? "Funding…" : "Get XLM Faucet"}
           </button>
           <button
-            onClick={disconnect}
+            onClick={handleDisconnect}
             className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-semibold text-destructive hover:bg-muted"
           >
             <LogOut className="h-4 w-4" /> Disconnect
@@ -105,7 +120,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             </span>
           </Link>
           <nav className="hidden items-center gap-1 rounded-full bg-secondary/70 p-1 sm:flex">
-            <NavLink to="/" icon={<PlusCircle className="h-4 w-4" />}>
+            <NavLink to="/create" icon={<PlusCircle className="h-4 w-4" />}>
               Create
             </NavLink>
             <NavLink to="/dashboard" icon={<LayoutGrid className="h-4 w-4" />}>

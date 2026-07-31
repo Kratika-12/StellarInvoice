@@ -78,10 +78,17 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "StellarInvoice — Fun payment invoices on Stellar" },
-      { name: "description", content: "Create shareable payment invoices and get paid in XLM on Stellar testnet. Playful, friendly, and delightfully simple." },
+      {
+        name: "description",
+        content:
+          "Create shareable payment invoices and get paid in XLM on Stellar testnet. Playful, friendly, and delightfully simple.",
+      },
       { name: "author", content: "StellarInvoice" },
       { property: "og:title", content: "StellarInvoice — Fun payment invoices on Stellar" },
-      { property: "og:description", content: "Create shareable payment invoices and get paid in XLM on Stellar testnet." },
+      {
+        property: "og:description",
+        content: "Create shareable payment invoices and get paid in XLM on Stellar testnet.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:site", content: "@StellarInvoice" },
@@ -94,7 +101,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "icon", href: "/favicon.svg", type: "image/svg+xml" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
-      { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap" },
+      {
+        rel: "stylesheet",
+        href: "https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap",
+      },
     ],
   }),
   shellComponent: RootShell,
@@ -109,7 +119,7 @@ function RootShell({ children }: { children: ReactNode }) {
       <head>
         <HeadContent />
       </head>
-      <body>
+      <body suppressHydrationWarning>
         {children}
         <Scripts />
       </body>

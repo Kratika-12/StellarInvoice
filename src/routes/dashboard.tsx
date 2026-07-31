@@ -1,8 +1,8 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { ArrowUpRight, Inbox, PlusCircle, Search } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
-import { readInvoices, subscribeToInvoiceEvents, type Invoice } from "@/lib/stellar";
+import { readInvoices, subscribeToInvoiceEvents, useWallet, type Invoice } from "@/lib/stellar";
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({
@@ -17,12 +17,22 @@ export const Route = createFileRoute("/dashboard")({
 type Filter = "all" | "pending" | "paid";
 
 function Dashboard() {
+  const navigate = useNavigate();
+  const { address, connecting } = useWallet();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [filter, setFilter] = useState<Filter>("all");
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!connecting && !address) {
+      void navigate({ to: "/", replace: true });
+    }
+  }, [address, connecting, navigate]);
+
+  useEffect(() => {
+    if (!address) return;
+
     let mounted = true;
     async function load() {
       try {
@@ -42,7 +52,9 @@ function Dashboard() {
       mounted = false;
       unsubscribe();
     };
-  }, []);
+  }, [address]);
+
+  if (!address) return null;
 
   const filtered = invoices.filter((i) => {
     if (filter !== "all" && i.status !== filter) return false;
@@ -67,7 +79,7 @@ function Dashboard() {
           </p>
         </div>
         <Link
-          to="/"
+          to="/create"
           className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-3 font-extrabold text-primary-foreground shadow-[var(--shadow-soft)] transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-lift)]"
         >
           <PlusCircle className="h-5 w-5" /> New invoice
@@ -220,7 +232,7 @@ function EmptyState({ hasAny }: { hasAny: boolean }) {
       </p>
       {!hasAny && (
         <Link
-          to="/"
+          to="/create"
           className="mt-5 inline-flex items-center gap-2 rounded-full bg-primary px-5 py-3 font-extrabold text-primary-foreground transition hover:-translate-y-0.5"
         >
           <PlusCircle className="h-5 w-5" /> Create invoice
